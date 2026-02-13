@@ -33,7 +33,7 @@ A working app where a user can upload a PDF and ask questions, getting:
 
 ### Secondary goals (V1)
 
-- Multi-document support 
+- Multi-document support
 - Better retrieval quality (tuning chunk size/top-k, optional reranking)
 - Simple evaluation script to measure retrieval + groundedness
 
