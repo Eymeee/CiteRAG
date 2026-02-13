@@ -1,0 +1,21 @@
+# secrets
+.env
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# local data (docs + indexes + metadata)
+data/
+uploads/
+*.pdf
+*.sqlite
+*.db
+faiss_index*
+*.faiss
+*.index
+
+# logs
+*.log
