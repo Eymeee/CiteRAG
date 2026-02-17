@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, TypeVar
+from typing import List, Optional
+
+from app.utils.pdf_loader import PDFPage
 
 
 # Common PDF ligatures and oddities in extracted text
@@ -108,21 +110,19 @@ def clean_text(text: str, *, options: Optional[CleanOptions] = None) -> str:
     return t.strip()
 
 
-T = TypeVar("T")
-
-
-def clean_pages(pages: Sequence[T], *, get_text, set_text, options: Optional[CleanOptions] = None) -> List[T]:
+def clean_pages(pages: list[PDFPage], *, options: Optional[CleanOptions] = None) -> List[PDFPage]:
     """
-    Clean a sequence of page-like objects.
-
-    Works with your PDFPage dataclass (or any structure) by passing:
-      - get_text(obj) -> str
-      - set_text(obj, new_text) -> obj (or mutate and return obj)
+    Clean a sequence of page objects. 
+    Works with PDFPage dataclass defined in pdf_loader.py
     """
-    out: List[T] = []
-    for p in pages:
-        cleaned = clean_text(get_text(p), options=options)
-        out.append(set_text(p, cleaned))
+    out: List[PDFPage] = []
+    for i,p in enumerate(pages):
+        cleaned_text = clean_text(p.text, options=options)
+        cleaned_page = PDFPage(
+            page_number=p.page_number,
+            text=cleaned_text
+        )
+        out.append(cleaned_page)
     return out
 
 
