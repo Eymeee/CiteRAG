@@ -12,7 +12,7 @@ PathLike = Union[str, Path]
 
 @dataclass(frozen=True) # Easier definition + making instances immutable
 class PDFPage:
-    page_number: int  # 1-based
+    page_number: int 
     text: str
 
 
