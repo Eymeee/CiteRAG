@@ -41,7 +41,7 @@ class MetadataStore:
         return len(self._by_id)
 
 
-    def add(self, metas: List[ChunkMeta], *, save: bool = True) -> None:
+    def add_chunkmeta_list(self, metas: List[ChunkMeta], *, save: bool = True) -> None:
         for meta in metas:
             self._by_id[meta.chunk_id] = meta
 
@@ -83,12 +83,12 @@ class MetadataStore:
 
         chunks = data.get("chunks") or {}
         by_id: Dict[str, ChunkMeta] = {}
-        
+
         for chunk_id, raw in chunks.items():
             by_id[chunk_id] = ChunkMeta(
                 chunk_id=chunk_id,
                 doc_id=str(raw["doc_id"]),
-                text=str(raw["text"]),
+                text=raw.get("text", ""),
                 page_start=raw.get("page_start"),
                 page_end=raw.get("page_end"),
                 chunk_index=int(raw.get("chunk_index", 0)),
@@ -109,7 +109,7 @@ class MetadataStore:
         tmp_path.replace(self.path)
 
 
-# ------------------- -----------------------
+# -------------------------------------------
 #              Helper functions 
 # -------------------------------------------
 

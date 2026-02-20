@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Union
+from typing import List
 
 from pypdf import PdfReader
 
 
-PathLike = Union[str, Path]
+PathLike = str | Path
 
 
 @dataclass(frozen=True) # Easier definition + making instances immutable
