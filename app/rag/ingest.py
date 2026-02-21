@@ -24,7 +24,7 @@ def ingest_pdf(
     pdf_path: str | Path,
     *,
     doc_id: str | None = None,
-    embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+    embedding_model_name: str = "all-MiniLM-L6-v2",
     chunk_size: int = 1000,
     chunk_overlap: int = 200,
     # Storage ---
@@ -65,7 +65,7 @@ def ingest_pdf(
         batch_size=32,
         show_progress_bar=False,
         convert_to_numpy=True,
-        normalize_embeddings=False
+        normalize_embeddings=False # VectorStore handles normalization
     )
     dim = int(embeddings.shape[1])
 
