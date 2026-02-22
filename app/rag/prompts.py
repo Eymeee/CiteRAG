@@ -18,9 +18,12 @@ SYSTEM_PROMPT = """You are CiteRAG.
 
 Rules:
 - Answer the QUESTION using ONLY the SOURCES provided.
-- If the SOURCES do not contain enough information, say you don't know.
+- If the SOURCES do not contain enough information, respond exactly:
+  I don't have enough information in the uploaded documents to answer that.
 - Cite sources using bracket numbers like [1], [2] for every factual claim.
 - Do not invent citations. Only use citations that exist in SOURCES.
+- Keep the answer concise, using short paragraphs or bullet points.
+- End with a final line exactly in this format: Sources: [1], [2]
 """
 
 
@@ -30,7 +33,7 @@ USER_PROMPT_TEMPLATE = """SOURCES:
 QUESTION:
 {question}
 
-Write a helpful answer with citations.
+Write a grounded answer that follows all rules.
 """
 
 
@@ -45,8 +48,8 @@ def format_contexts(
     Convert retrieved chunks into a prompt-ready SOURCES block.
 
     Output format:
-      [1] (doc_id p.X-Y) chunk text...
-      [2] (doc_id p.Z)   chunk text...
+      [1] (source=doc.pdf, page=3, chunk=doc::p0003::c0001): chunk text...
+      [2] (source=doc.pdf, page=5-6, chunk=doc::p0005::c0002): chunk text...
 
     Notes:
     - Keeps incoming order (so pass already-ranked chunks).
@@ -57,16 +60,19 @@ def format_contexts(
 
     for i, c in enumerate(chunks, start=1):
         doc_id = getattr(c, "doc_id", "unknown")
+        chunk_id = getattr(c, "chunk_id", "unknown")
 
         ps = getattr(c, "page_start", None)
         pe = getattr(c, "page_end", None)
 
         if ps is None:
-            prov = f"({doc_id})"
+            page_label = "unknown"
         elif pe in (None, ps):
-            prov = f"({doc_id} p.{ps})"
+            page_label = f"{ps}"
         else:
-            prov = f"({doc_id} p.{ps}-{pe})"
+            page_label = f"{ps}-{pe}"
+
+        prov = f"(source={doc_id}, page={page_label}, chunk={chunk_id})"
 
         header = f"[{i}] {prov}"
         if include_score:
@@ -76,7 +82,7 @@ def format_contexts(
         text = _WS.sub(" ", text)
 
         if len(text) > max_chunk_chars:
-            text = text[: max_chunk_chars - 1].rstrip() + "…"
+            text = text[: max_chunk_chars - 3].rstrip() + "..."
 
         block = f"{header} {text}".strip()
 
