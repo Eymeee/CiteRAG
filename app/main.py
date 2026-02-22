@@ -147,11 +147,6 @@ def list_documents() -> DocumentsResponse:
 def chat(body: ChatRequest) -> ChatResponse:
     _ensure_dirs()
 
-    if body.doc_ids:
-        raise HTTPException(
-            status_code=501,
-            detail="doc_ids filtering is not implemented yet in this MVP.",
-        )
     if body.collection_id:
         raise HTTPException(
             status_code=501,
@@ -165,6 +160,20 @@ def chat(body: ChatRequest) -> ChatResponse:
             detail="No indexed documents found. Upload a PDF first.",
         )
 
+    selected_doc_ids: list[str] | None = None
+    if body.doc_ids is not None:
+        selected_doc_ids = sorted({d.strip() for d in body.doc_ids if d and d.strip()})
+        if not selected_doc_ids:
+            raise HTTPException(status_code=400, detail="doc_ids cannot be empty.")
+
+        available_doc_ids = set(metadata_store.list_docs())
+        unknown_doc_ids = [d for d in selected_doc_ids if d not in available_doc_ids]
+        if unknown_doc_ids:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unknown doc_ids: {', '.join(unknown_doc_ids)}",
+            )
+
     retriever = _build_retriever(metadata_store)
     result = generate(
         body.question,
@@ -173,6 +182,7 @@ def chat(body: ChatRequest) -> ChatResponse:
         base_url=OLLAMA_BASE_URL,
         top_k=body.top_k,
         min_score=body.min_score,
+        doc_ids=selected_doc_ids,
     )
 
     citations = [_to_citation(i, c) for i, c in enumerate(result.contexts, start=1)]

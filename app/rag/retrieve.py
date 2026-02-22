@@ -43,11 +43,14 @@ class Retriever:
         *,
         top_k: int = 5,
         min_score: float | None = None,
+        doc_ids: Sequence[str] | None = None,
         dedupe: bool = True,
     ) -> list[RetrievedChunk]:
         query = (query or "").strip()
         if not query:
             return []
+
+        allowed_doc_ids = {d for d in (doc_ids or []) if d}
 
         q_vec = self.embedder.encode([query])  # shape (1, dim)
         hits = self.vector_store.search(q_vec, top_k=top_k)
@@ -65,6 +68,8 @@ class Retriever:
 
             meta = self.metadata_store.get(hit.chunk_id)
             if meta is None:
+                continue
+            if allowed_doc_ids and meta.doc_id not in allowed_doc_ids:
                 continue
 
             out.append(
@@ -87,8 +92,17 @@ class Retriever:
         *,
         top_k: int = 5,
         min_score: float | None = None,
+        doc_ids: Sequence[str] | None = None,
     ) -> list[str]:
         """
         Convenience helper for prompt construction: returns only chunk texts in rank order.
         """
-        return [c.text for c in self.retrieve(query, top_k=top_k, min_score=min_score)]
+        return [
+            c.text
+            for c in self.retrieve(
+                query,
+                top_k=top_k,
+                min_score=min_score,
+                doc_ids=doc_ids,
+            )
+        ]

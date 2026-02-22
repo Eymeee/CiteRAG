@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from langchain_ollama import ChatOllama
@@ -33,12 +34,18 @@ def generate(
     temperature: float = 0.2,
     num_ctx: int | None = None,
     include_score_in_sources: bool = False,
+    doc_ids: Sequence[str] | None = None,
 ) -> GenerationResult:
     q = (question or "").strip()
     if not q:
         return GenerationResult(answer="", contexts=[], model=model)
 
-    contexts = retriever.retrieve(q, top_k=top_k, min_score=min_score)
+    contexts = retriever.retrieve(
+        q,
+        top_k=top_k,
+        min_score=min_score,
+        doc_ids=doc_ids,
+    )
     if not contexts:
         return GenerationResult(
             answer=INSUFFICIENT_CONTEXT_MSG,
