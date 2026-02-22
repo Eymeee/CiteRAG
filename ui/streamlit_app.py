@@ -10,11 +10,13 @@ from uuid import uuid4
 
 import faiss
 import streamlit as st
+from dotenv import load_dotenv
 
 # Allow running from either repo root or the ui/ directory.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+load_dotenv(PROJECT_ROOT / ".env")
 
 from app.rag.generate import generate
 from app.rag.ingest import ingest_pdf

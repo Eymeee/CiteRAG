@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import faiss
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from dotenv import load_dotenv
 
 from app.rag.generate import INSUFFICIENT_CONTEXT_MSG, generate
 from app.rag.ingest import ingest_pdf
@@ -21,6 +22,9 @@ from app.rag.schemas import (
 )
 from app.storage.metadata_store import MetadataStore
 from app.storage.vector_store import VectorStore
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(PROJECT_ROOT / ".env")
 
 DATA_DIR = Path("data")
 UPLOADS_DIR = DATA_DIR / "uploads"
