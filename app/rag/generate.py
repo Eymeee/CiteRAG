@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from urllib.parse import urlsplit, urlunsplit
 
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -19,6 +20,77 @@ class GenerationResult:
     answer: str
     contexts: list[RetrievedChunk]
     model: str
+
+
+def _candidate_base_urls(base_url: str) -> list[str]:
+    primary = (base_url or "").strip() or "http://localhost:11434"
+    parts = urlsplit(primary)
+    hostname = (parts.hostname or "").lower()
+    candidates: list[str] = [primary]
+
+    def _with_host(new_host: str) -> str:
+        netloc = new_host
+        if parts.port:
+            netloc = f"{new_host}:{parts.port}"
+        return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+
+    if hostname in {"localhost", "127.0.0.1"}:
+        for host in ("127.0.0.1", "localhost", "host.docker.internal"):
+            url = _with_host(host)
+            if url not in candidates:
+                candidates.append(url)
+    elif hostname == "host.docker.internal":
+        for host in ("localhost", "127.0.0.1"):
+            url = _with_host(host)
+            if url not in candidates:
+                candidates.append(url)
+    return candidates
+
+
+def _is_connection_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    needles = [
+        "connection refused",
+        "failed to establish a new connection",
+        "[errno 111]",
+        "connect error",
+        "max retries exceeded",
+        "name or service not known",
+        "temporary failure in name resolution",
+    ]
+    return any(n in msg for n in needles)
+
+
+def _invoke_ollama_with_fallback(
+    *,
+    messages: list,
+    llm_kwargs: dict,
+) -> tuple[object, str]:
+    original_base_url = str(llm_kwargs.get("base_url") or "http://localhost:11434")
+    candidates = _candidate_base_urls(original_base_url)
+    last_exc: Exception | None = None
+
+    for candidate in candidates:
+        local_kwargs = dict(llm_kwargs)
+        local_kwargs["base_url"] = candidate
+        llm = ChatOllama(**local_kwargs)
+        try:
+            return llm.invoke(messages), candidate
+        except Exception as exc:
+            last_exc = exc
+            if not _is_connection_error(exc):
+                raise
+            continue
+
+    tried = ", ".join(candidates)
+    detail = str(last_exc) if last_exc is not None else "unknown connection error"
+    raise RuntimeError(
+        "Could not connect to Ollama. "
+        f"Tried base URLs: {tried}. "
+        "Make sure Ollama is running (`ollama serve`) and the model is available "
+        f"(`ollama pull {llm_kwargs.get('model', '')}`). "
+        f"Original error: {detail}"
+    )
 
 
 def generate(
@@ -69,13 +141,13 @@ def generate(
     if num_ctx is not None:
         llm_kwargs["num_ctx"] = int(num_ctx)
 
-    llm = ChatOllama(**llm_kwargs)
-
-    resp = llm.invoke(
-        [
-            SystemMessage(content=parts.system),
-            HumanMessage(content=parts.user),
-        ]
+    messages = [
+        SystemMessage(content=parts.system),
+        HumanMessage(content=parts.user),
+    ]
+    resp, _used_base_url = _invoke_ollama_with_fallback(
+        messages=messages,
+        llm_kwargs=llm_kwargs,
     )
 
     answer = (resp.content or "").strip()

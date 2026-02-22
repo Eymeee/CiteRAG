@@ -17,6 +17,7 @@ Local Retrieval-Augmented Generation (RAG) app for PDF question answering with c
 - FAISS for vector search
 
 ## Quick start
+
 1. Create and activate a virtual environment.
 
 ```bash
@@ -88,6 +89,7 @@ python scripts/eval_rag.py --dataset eval/examples.json --output eval/report.jso
 ```
 
 Supported dataset formats:
+
 - JSON list of examples
 - JSON object with `examples` field
 - JSONL (one JSON object per line)
@@ -105,6 +107,7 @@ Minimal example record:
 ```
 
 Fields:
+
 - `question` required
 - `doc_ids` optional filter for retrieval
 - `expected_doc_ids` optional for retrieval metrics

@@ -31,8 +31,16 @@ FAISS_IDS_PATH = DATA_DIR / "faiss_ids.json"
 METADATA_PATH = DATA_DIR / "metadata.json"
 
 EMBEDDING_MODEL_NAME = os.getenv("CITERAG_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+if not os.getenv("CITERAG_EMBEDDING_MODEL"):
+    EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+
 OLLAMA_MODEL = os.getenv("CITERAG_OLLAMA_MODEL", "llama3.2")
+if not os.getenv("CITERAG_OLLAMA_MODEL"):
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+
 OLLAMA_BASE_URL = os.getenv("CITERAG_OLLAMA_BASE_URL", "http://localhost:11434")
+if not os.getenv("CITERAG_OLLAMA_BASE_URL"):
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 LOG_LEVEL = os.getenv("CITERAG_LOG_LEVEL", "INFO").upper()
 
 logging.basicConfig(
