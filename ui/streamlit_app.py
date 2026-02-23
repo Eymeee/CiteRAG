@@ -18,6 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 load_dotenv(PROJECT_ROOT / ".env")
 
+from app.rag.delete import hard_delete_documents
 from app.rag.generate import generate
 from app.rag.ingest import ingest_pdf
 from app.rag.retrieve import Retriever
@@ -158,12 +159,43 @@ def _ingest_uploaded_pdf(uploaded_file) -> tuple[bool, str]:
     )
 
 
+def _delete_documents(doc_ids: list[str]) -> tuple[bool, str]:
+    result = hard_delete_documents(
+        doc_ids=doc_ids,
+        metadata_path=METADATA_PATH,
+        faiss_index_path=FAISS_INDEX_PATH,
+        faiss_ids_path=FAISS_IDS_PATH,
+    )
+    _get_retriever.clear()
+    st.session_state.messages = []
+
+    remaining_docs = MetadataStore(METADATA_PATH).list_docs()
+    st.session_state["active_doc_ids"] = remaining_docs.copy()
+    st.session_state["docs_to_delete"] = []
+    st.session_state["confirm_delete"] = False
+
+    return (
+        True,
+        f"Deleted {result.deleted_chunks} chunks from {len(result.deleted_doc_ids)} document(s).",
+    )
+
+
 def main() -> None:
     st.set_page_config(page_title="CiteRAG", layout="wide")
     _ensure_dirs()
 
     st.title("CiteRAG MVP")
     st.caption("Upload PDF documents, then ask grounded questions with citations.")
+    flash_success = st.session_state.pop("flash_success", None)
+    if flash_success:
+        st.success(flash_success)
+    flash_error = st.session_state.pop("flash_error", None)
+    if flash_error:
+        st.error(flash_error)
+
+    metadata_store = MetadataStore(METADATA_PATH)
+    docs = metadata_store.list_docs()
+    active_doc_ids: list[str] = []
 
     with st.sidebar:
         st.subheader("Settings")
@@ -181,13 +213,56 @@ def main() -> None:
             min_score = None
 
         st.divider()
-        metadata_store = MetadataStore(METADATA_PATH)
-        docs = metadata_store.list_docs()
         st.write(f"Indexed documents: {len(docs)}")
         if docs:
-            st.selectbox("Current corpus", ["All indexed documents"], index=0, disabled=True)
+            existing_active = st.session_state.get("active_doc_ids")
+            if not isinstance(existing_active, list):
+                st.session_state["active_doc_ids"] = docs.copy()
+            else:
+                kept = [d for d in existing_active if d in docs]
+                st.session_state["active_doc_ids"] = kept or docs.copy()
+            existing_delete = st.session_state.get("docs_to_delete")
+            if not isinstance(existing_delete, list):
+                st.session_state["docs_to_delete"] = []
+            else:
+                st.session_state["docs_to_delete"] = [d for d in existing_delete if d in docs]
+
+            active_doc_ids = st.multiselect(
+                "Answer from documents",
+                options=docs,
+                key="active_doc_ids",
+            )
             st.caption("\n".join(docs))
+
+            st.divider()
+            st.subheader("Manage indexed docs")
+            docs_to_delete = st.multiselect(
+                "Delete indexed documents",
+                options=docs,
+                key="docs_to_delete",
+            )
+            confirm_delete = st.checkbox(
+                "Confirm permanent deletion",
+                key="confirm_delete",
+            )
+            if st.button(
+                "Delete selected documents",
+                disabled=not docs_to_delete or not confirm_delete,
+            ):
+                with st.spinner("Deleting selected documents..."):
+                    try:
+                        ok, message = _delete_documents(docs_to_delete)
+                    except Exception as exc:
+                        ok, message = False, f"Deletion failed: {exc}"
+                if ok:
+                    st.session_state["flash_success"] = message
+                    st.rerun()
+                else:
+                    st.error(message)
         else:
+            st.session_state["active_doc_ids"] = []
+            st.session_state["docs_to_delete"] = []
+            st.session_state["confirm_delete"] = False
             st.caption("No documents indexed yet.")
 
     st.subheader("1) Upload and Index")
@@ -231,6 +306,17 @@ def main() -> None:
             st.markdown(answer)
         return
 
+    all_doc_ids = metadata_store.list_docs()
+    selected_doc_ids = [d for d in active_doc_ids if d in all_doc_ids]
+    if not selected_doc_ids:
+        answer = "Select at least one document in the sidebar before asking a question."
+        assistant_message = {"role": "assistant", "content": answer, "sources": []}
+        st.session_state.messages.append(assistant_message)
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+        return
+    query_doc_ids = None if len(selected_doc_ids) == len(all_doc_ids) else selected_doc_ids
+
     dim = _index_dim()
     if dim is None:
         answer = "Vector index is missing. Re-index a document."
@@ -251,6 +337,7 @@ def main() -> None:
                     base_url=OLLAMA_BASE_URL,
                     top_k=top_k,
                     min_score=min_score,
+                    doc_ids=query_doc_ids,
                 )
                 sources = [_serialize_source(c, i) for i, c in enumerate(result.contexts, start=1)]
                 st.markdown(result.answer)
