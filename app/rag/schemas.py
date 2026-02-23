@@ -14,6 +14,19 @@ class DocumentsResponse(BaseModel):
     documents: list[str]
 
 
+class DeleteDocumentsRequest(BaseModel):
+    doc_ids: list[str] = Field(min_length=1)
+
+
+class DeleteDocumentsResponse(BaseModel):
+    requested_doc_ids: list[str]
+    deleted_doc_ids: list[str]
+    deleted_chunks: int = Field(ge=0)
+    remaining_docs: int = Field(ge=0)
+    remaining_chunks: int = Field(ge=0)
+    index_size: int = Field(ge=0)
+
+
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1)
     doc_ids: list[str] | None = None

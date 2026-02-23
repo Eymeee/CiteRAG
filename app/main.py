@@ -10,6 +10,7 @@ import faiss
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from dotenv import load_dotenv
 
+from app.rag.delete import hard_delete_documents
 from app.rag.generate import INSUFFICIENT_CONTEXT_MSG, generate
 from app.rag.ingest import ingest_pdf
 from app.rag.retrieve import RetrievedChunk, Retriever
@@ -17,6 +18,8 @@ from app.rag.schemas import (
     ChatRequest,
     ChatResponse,
     Citation,
+    DeleteDocumentsRequest,
+    DeleteDocumentsResponse,
     DocumentsResponse,
     UploadDocumentResponse,
 )
@@ -153,6 +156,49 @@ def list_documents() -> DocumentsResponse:
     _ensure_dirs()
     metadata_store = MetadataStore(METADATA_PATH)
     return DocumentsResponse(documents=metadata_store.list_docs())
+
+
+@app.post("/documents/delete", response_model=DeleteDocumentsResponse)
+def delete_documents(body: DeleteDocumentsRequest) -> DeleteDocumentsResponse:
+    _ensure_dirs()
+
+    metadata_store = MetadataStore(METADATA_PATH)
+    if len(metadata_store) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="No indexed documents found. Upload a PDF first.",
+        )
+
+    selected_doc_ids = sorted({d.strip() for d in body.doc_ids if d and d.strip()})
+    if not selected_doc_ids:
+        raise HTTPException(status_code=400, detail="doc_ids cannot be empty.")
+
+    available_doc_ids = set(metadata_store.list_docs())
+    unknown_doc_ids = [d for d in selected_doc_ids if d not in available_doc_ids]
+    if unknown_doc_ids:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown doc_ids: {', '.join(unknown_doc_ids)}",
+        )
+
+    try:
+        result = hard_delete_documents(
+            doc_ids=selected_doc_ids,
+            metadata_path=METADATA_PATH,
+            faiss_index_path=FAISS_INDEX_PATH,
+            faiss_ids_path=FAISS_IDS_PATH,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Delete failed: {exc}") from exc
+
+    return DeleteDocumentsResponse(
+        requested_doc_ids=result.requested_doc_ids,
+        deleted_doc_ids=result.deleted_doc_ids,
+        deleted_chunks=result.deleted_chunks,
+        remaining_docs=result.remaining_docs,
+        remaining_chunks=result.remaining_chunks,
+        index_size=result.index_size,
+    )
 
 
 @app.post("/chat", response_model=ChatResponse)

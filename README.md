@@ -6,6 +6,8 @@ Local Retrieval-Augmented Generation (RAG) app for PDF question answering with c
 
 - Ingests PDFs locally: extract text, clean, chunk, embed, and persist to FAISS.
 - Answers questions grounded in retrieved chunks.
+- Lets you choose which indexed documents are used for answering.
+- Lets you delete indexed documents (hard delete + FAISS rebuild).
 - Returns citation context (document, page, chunk id).
 - Refuses when context is insufficient.
 
@@ -37,13 +39,15 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-4. Ensure Ollama is running and pull a model.
+4. Ensure Ollama is running and pull a model (recommended low-memory default).
 
 ```bash
-ollama pull llama3.2
+ollama serve
+ollama pull llama3.2:1b
 ```
 
 Note: API, Streamlit, and scripts auto-load `.env` from the project root.
+If `ollama serve` says port `11434` is already in use, Ollama is already running as a service.
 
 ## Run the app
 
@@ -72,7 +76,15 @@ python scripts/build_index.py ./docs --recursive
 
 - `POST /documents/upload`: upload and ingest one PDF.
 - `GET /documents`: list indexed document ids.
-- `POST /chat`: ask a question and get answer + citations.
+- `POST /documents/delete`: hard-delete selected docs and rebuild index.
+- `POST /chat`: ask a question and get answer + citations (`doc_ids` optional).
+
+## Streamlit workflow
+
+1. Upload and index one or more PDFs.
+2. In the sidebar, choose `Answer from documents` to scope retrieval.
+3. Ask questions in chat and inspect sources.
+4. Use `Delete indexed documents` with confirmation to remove docs permanently.
 
 ## Evaluation script
 
@@ -148,6 +160,7 @@ docker run --rm -it \
 
 - Use the same embedding model for ingestion and retrieval (`CITERAG_EMBEDDING_MODEL`).
 - Data persists under `data/` (`faiss.index`, `faiss_ids.json`, `metadata.json`).
+- For low-RAM machines, keep `CITERAG_OLLAMA_MODEL=llama3.2:1b`.
 - If upload endpoints fail at startup, ensure `python-multipart` is installed.
 - If Ollama is outside Docker, keep `CITERAG_OLLAMA_BASE_URL` pointed to the host.
 
