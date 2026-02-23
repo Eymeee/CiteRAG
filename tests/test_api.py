@@ -274,3 +274,23 @@ def test_delete_documents_validation_errors(api_paths: dict[str, Path]) -> None:
         api_main.delete_documents(DeleteDocumentsRequest(doc_ids=[" "]))
     assert exc2.value.status_code == 400
     assert "doc_ids cannot be empty" in exc2.value.detail
+
+
+def test_delete_documents_returns_500_on_index_ids_inconsistency(
+    api_paths: dict[str, Path],
+) -> None:
+    _seed_metadata(
+        api_paths["metadata_path"],
+        [ChunkMeta(chunk_id="docA::c0000", doc_id="docA", text="a0", chunk_index=0)],
+    )
+    # Create only ids mapping without FAISS index to simulate storage inconsistency.
+    api_paths["faiss_ids_path"].write_text('["docA::c0000"]', encoding="utf-8")
+
+    with pytest.raises(HTTPException) as exc:
+        api_main.delete_documents(DeleteDocumentsRequest(doc_ids=["docA"]))
+    assert exc.value.status_code == 500
+    assert "Delete failed" in exc.value.detail
+    assert "out of sync" in exc.value.detail
+
+    # Failure should not delete metadata.
+    assert api_main.list_documents().documents == ["docA"]
