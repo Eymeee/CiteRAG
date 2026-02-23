@@ -45,7 +45,8 @@ class MetadataStore:
         for meta in metas:
             self._by_id[meta.chunk_id] = meta
 
-        if save: self.save()
+        if save: 
+            self.save()
 
 
     def get(self, chunk_id: str) -> Optional[ChunkMeta]:
