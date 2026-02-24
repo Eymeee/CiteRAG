@@ -2,6 +2,15 @@
 
 Local Retrieval-Augmented Generation (RAG) system for PDF question answering with source citations, built with FastAPI, Streamlit, FAISS, and Ollama.
 
+<div align="center">
+  ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+  ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+  ![Streamlit](https://img.shields.io/badge/Streamlit-%23FE4B4B.svg?style=for-the-badge&logo=streamlit&logoColor=white)
+  ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+  ![Ollama](https://img.shields.io/badge/ollama-%23000000.svg?style=for-the-badge&logo=ollama&logoColor=white)
+  ![LangChain](https://img.shields.io/badge/langchain-%231C3C3C.svg?style=for-the-badge&logo=langchain&logoColor=white)
+</div>
+
 > [!NOTE]
 > CiteRAG is fully local and free to run: no paid API keys are required.
 
@@ -9,6 +18,7 @@ Local Retrieval-Augmented Generation (RAG) system for PDF question answering wit
 
 - [Overview](#overview)
 - [Core Features](#core-features)
+- [Architecture](#architecture)
 - [How It Works](#how-it-works)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
@@ -46,6 +56,13 @@ The goal is to reduce hallucinations by forcing answers to come from retrieved c
 | Document scoping | Query only selected indexed documents |
 | Hard delete | Remove documents from metadata and rebuild FAISS index |
 | Persistent storage | Index and metadata survive restarts |
+
+## Architecture
+
+![CiteRAG architecture](assets/architecture.png)
+
+> Ingestion (top): PDF → chunk/embed → FAISS + metadata  
+> Query (bottom): question → retrieve → Ollama → answer + citations
 
 ## How It Works
 
