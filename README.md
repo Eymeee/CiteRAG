@@ -1,6 +1,11 @@
 # CiteRAG
 
+<div align="center">
+
+![CiteRag Logo](assets/citerag_logo.png)
+
 Local Retrieval-Augmented Generation (RAG) system for PDF question answering with source citations, built with FastAPI, Streamlit, FAISS, and Ollama.
+</div>
 
 <div align="center">
   
