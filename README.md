@@ -66,10 +66,11 @@ The goal is to reduce hallucinations by forcing answers to come from retrieved c
 
 ## Architecture
 
+<div align="center">
+  
 ![CiteRAG architecture](assets/citerag_arch.png)
-
-> Ingestion (top): PDF → chunk/embed → FAISS + metadata
-> Query (bottom): question → retrieve → Ollama → answer + citations
+**CiteRAG Full Architecture**
+</div>
 
 ## How It Works
 
